@@ -12,7 +12,7 @@ IsPostgreSQL = False
 connection_string = os.getenv('BOT_POSTGRESQL_STRING_CONNECTION','')  #If you want you don't want to use the database, just leave the BOT_POSTGRESQL_STRING_CONNECTION variable in .env ''
 
 
-# Verificar se a string de conexão está disponível
+#Check if the connection string is available
 if connection_string:
     IsPostgreSQL = True
 
@@ -22,13 +22,13 @@ if connection_string:
             'user': result.username,
             'password': result.password,
             'host': result.hostname,
-            'port': result.port or 5432,  # Porta padrão do PostgreSQL é 5432
+            'port': result.port or 5432,  # PostgreSQL default port is 5432
         }
 
-    # Parse da string de conexão
+    #Parse the connection string
     conn_params = parse_connection_url(connection_string)
 
-    # Configurar os parâmetros de conexão
+    #Configure connection parameters
     config = {
         'user': conn_params.get('user'),
         'password': conn_params.get('password'),
@@ -36,16 +36,17 @@ if connection_string:
         'port': conn_params.get('port'),
     }
 
-    database_name = 'palbot_db'
+    #defines the name of the database
+    database_name = 'palbot_db' 
 
-    # Conectar ao banco de dados PostgreSQL
+    #Connect to PostgreSQL database
     try:
-        # Primeiro conecte-se ao banco de dados padrão (template1)
+        #First connect to the default database (template1)
         connection = psycopg2.connect(**config, dbname="template1")
         connection.autocommit = True
         cursor = connection.cursor()
 
-        # Verificar se o banco de dados já existe
+        #Check if the database already exists
         cursor.execute(f"SELECT 1 FROM pg_database WHERE datname = '{database_name}'")
         result = cursor.fetchone()
 
@@ -61,7 +62,7 @@ if connection_string:
         cursor.close()
         connection.close()
 
-    # Conectar ao banco de dados recém-criado
+    #Connect to newly created database
     config['dbname'] = database_name
 
     CONFIG_PG = config
@@ -71,7 +72,7 @@ if connection_string:
         connection.autocommit = True
         cursor = connection.cursor()
 
-        # Criar as tabelas
+        #Create the tables
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS servers (
                 guild_id VARCHAR(255) NOT NULL,
@@ -144,10 +145,11 @@ if connection_string:
         # Palgame tables
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS user_pals (
-                user_id VARCHAR(255) PRIMARY KEY,
+                user_id VARCHAR(255),
                 pal_name VARCHAR(255),
                 experience INT NOT NULL DEFAULT 0,
-                level INT NOT NULL DEFAULT 1
+                level INT NOT NULL DEFAULT 1,
+                PRIMARY KEY (user_id, pal_name)
             );
         ''')
         
@@ -161,7 +163,7 @@ if connection_string:
             )
         ''')
 
-        # Inserir as configurações padrão no sistema de economia
+        #Enter default settings into the savings system
         default_settings = {
             "currency_name": "Points",
             "invite_reward": "10",
@@ -430,9 +432,10 @@ async def add_points(user_id, user_name, points):
                 cursor.execute('''
                     INSERT INTO user_points (user_id, user_name, points)
                     VALUES (%s, %s, %s)
-                    ON CONFLICT(user_id) DO UPDATE SET points = points + excluded.points, user_name = excluded.user_name;
+                    ON CONFLICT(user_id) DO UPDATE 
+                    SET points = user_points.points + excluded.points, user_name = excluded.user_name;
                 ''', (user_id, user_name, points))
-                conn.commit()
+            conn.commit()
         except psycopg2.Error as e:
             print(f"Error adding points: {e}")
         finally:
@@ -459,7 +462,7 @@ async def set_points(user_id, user_name, points):
                     VALUES (%s, %s, %s)
                     ON CONFLICT(user_id) DO UPDATE SET points = excluded.points, user_name = excluded.user_name;
                 ''', (user_id, user_name, points))
-                conn.commit()
+            conn.commit()
         except psycopg2.Error as e:
             print(f"Error setting points: {e}")
         finally:
